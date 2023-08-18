@@ -1,0 +1,11 @@
+[package]
+name = "cobalt-migrator"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+astra_formats = { git = "https://github.com/thane98/astra-formats", default-features = false }
+clap = { version = "4.3.22", features = ["derive"] }
+
