@@ -1,4 +1,4 @@
-use astra_formats::{Book, TextBundle};
+use astra_formats::{Book, MessageBundle, TextBundle};
 use astra_formats::{Bundle, BundleFile};
 use pathdiff::diff_paths;
 use phf::phf_map;
@@ -70,6 +70,8 @@ fn main() {
     }
 
     fs::create_dir_all(Path::new(&target_path).join("patches/xml"));
+    fs::create_dir_all(Path::new(&target_path).join("patches/msbt"));
+
     fs::create_dir_all(Path::new(&target_path).join("Data"));
 
     for entry in WalkDir::new(Path::new(&mod_path).join("romfs"))
@@ -84,23 +86,46 @@ fn main() {
             continue;
         }
 
-        let file_name = entry
-            .file_name()
-            .to_str()
-            .unwrap()
-            .trim_end_matches(".xml.bundle");
+        let file_name = entry.file_name().to_str().unwrap();
         // check if file is in SUPPORTED_GAMEDATAS
         // if it is, then we need to load it and do stuff
         // if it isn't, then we need to copy it over
-        let supported_gamedata = GAMEDATA_MAP.contains_key(file_name);
-        println!("Is {} supported: {}", file_name, supported_gamedata);
-        if supported_gamedata {
-            let new_name = GAMEDATA_MAP.get(file_name).unwrap();
-            println!("Migrating {} to {}", file_name, new_name);
-            migrate_gamedata(&path.to_path_buf(), new_name, &target_path);
-        } else {
-            println!("Copying {} to {}", file_name, &target_path);
-            fs::copy(path, Path::new(&target_path).join(relative_path)).expect("died");
+        if file_name.ends_with(".xml.bundle") {
+            let file_name = file_name.trim_end_matches(".xml.bundle");
+            let supported_gamedata = GAMEDATA_MAP.contains_key(file_name);
+            println!("Is {} supported: {}", file_name, supported_gamedata);
+            if supported_gamedata {
+                let new_name = GAMEDATA_MAP.get(file_name).unwrap();
+                println!("Migrating {} to {}", file_name, new_name);
+                migrate_gamedata(&path.to_path_buf(), new_name, &target_path);
+            } else {
+                println!("Copying {} to {}", file_name, &target_path);
+                fs::copy(path, Path::new(&target_path).join(relative_path)).expect("died");
+            }
+        }
+
+        if file_name.ends_with(".bytes.bundle") {
+            let my_message = MessageBundle::load(path);
+            match my_message {
+                Ok(mut message) => {
+                    println!("Message loaded successfully.");
+                    message.serialize();
+                    let my_result = message.serialize();
+                    // println!("Bundle: {:?}", my_result);
+                    let mut file = File::create(
+                        Path::new(&target_path)
+                            .join("patches")
+                            .join("msbt")
+                            .join(file_name)
+                            .with_extension("msbt"),
+                    )
+                    .unwrap();
+                    file.write_all(my_result.unwrap().as_slice()).expect("died");
+                }
+                Err(e) => {
+                    println!("Error loading message: {:?}", e);
+                }
+            }
         }
     }
 
