@@ -116,7 +116,7 @@ fn main() {
                         Path::new(&target_path)
                             .join("patches")
                             .join("msbt")
-                            .join(file_name)
+                            .join(file_name.strip_suffix(".bytes.bundle").unwrap())
                             .with_extension("msbt"),
                     )
                     .unwrap();
