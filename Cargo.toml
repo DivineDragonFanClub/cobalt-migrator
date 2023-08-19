@@ -8,4 +8,6 @@ edition = "2021"
 [dependencies]
 astra_formats = { git = "https://github.com/thane98/astra-formats", default-features = false }
 clap = { version = "4.3.22", features = ["derive"] }
-
+pathdiff = "0.2.1"
+phf = { version = "0.11", features = ["macros"] }
+walkdir = "2"
