@@ -56,10 +56,17 @@ static GAMEDATA_MAP: phf::Map<&'static str, &'static str> = phf_map! {
     "animal" => "Animal",
     "calculator" => "Calculator",
 };
+
+fn create_required_directories(target_path: &str) {
+    fs::create_dir_all(Path::new(&target_path).join("patches/xml"));
+    fs::create_dir_all(Path::new(&target_path).join("patches/msbt"));
+    fs::create_dir_all(Path::new(&target_path).join("Data"));
+}
+
 fn main() {
     let cli = Args::parse();
     let mod_path = cli.mod_path;
-    let romfs_path = mod_path.join("romfs");
+    let romfs_path: PathBuf = mod_path.join("romfs");
     let mut target_path = mod_path.file_name().unwrap().to_str().unwrap().to_string();
     target_path.push_str(" (Cobalt)");
     println!("Mod name: {}", &target_path);
@@ -69,10 +76,7 @@ fn main() {
         println!("This isn't a romfs folder, so I can't help you here.");
     }
 
-    fs::create_dir_all(Path::new(&target_path).join("patches/xml"));
-    fs::create_dir_all(Path::new(&target_path).join("patches/msbt"));
-
-    fs::create_dir_all(Path::new(&target_path).join("Data"));
+    create_required_directories(&target_path);
 
     for entry in WalkDir::new(Path::new(&mod_path).join("romfs"))
         .into_iter()
@@ -80,7 +84,7 @@ fn main() {
     {
         let path = entry.path();
         let relative_path = diff_paths(path, &romfs_path).unwrap();
-        println!("{}", relative_path.display());
+        println!("Relative path: {}", relative_path.display());
         if path.is_dir() {
             fs::create_dir_all(Path::new(&target_path).join(relative_path));
             continue;
@@ -105,12 +109,11 @@ fn main() {
         }
 
         if file_name.ends_with(".bytes.bundle") {
-            let my_message = MessageBundle::load(path);
+            let my_message = TextBundle::load(path);
             match my_message {
                 Ok(mut message) => {
                     println!("Message loaded successfully.");
-                    message.serialize();
-                    let my_result = message.serialize();
+                    let my_result = message.take_raw();
                     // println!("Bundle: {:?}", my_result);
                     let mut file = File::create(
                         Path::new(&target_path)
