@@ -7,26 +7,9 @@ use std::path::PathBuf;
 use walkdir::WalkDir;
 use gag::Gag;
 
-extern crate remove_empty_subdirs;
-
 use remove_empty_subdirs::remove_empty_subdirs;
 
 use clap::Parser;
-
-
-// Person
-// Skill
-// Shop
-// Item
-// God
-// Job
-// AnimSet
-// Params
-// Chapter
-// AssetTable
-// Animal
-// Calculator
-// Reliance
 
 static SUPPORTED_GAMEDATAS: &[&str] = &[
     "person",
@@ -44,10 +27,11 @@ static SUPPORTED_GAMEDATAS: &[&str] = &[
     "reliance",
 ];
 
-fn create_required_directories(target_path: &str) {
-    fs::create_dir_all(Path::new(&target_path).join("patches/xml"));
-    fs::create_dir_all(Path::new(&target_path).join("patches/msbt"));
-    fs::create_dir_all(Path::new(&target_path).join("Data"));
+fn create_required_directories(target_path: &str) -> std::io::Result<()> {
+    fs::create_dir_all(Path::new(&target_path).join("patches/xml"))?;
+    fs::create_dir_all(Path::new(&target_path).join("patches/msbt"))?;
+    fs::create_dir_all(Path::new(&target_path).join("Data"))?;
+    Ok(())
 }
 
 fn main() {
@@ -56,14 +40,15 @@ fn main() {
     let romfs_path: PathBuf = mod_path.join("romfs");
     let mut target_path = mod_path.file_name().unwrap().to_str().unwrap().to_string();
     target_path.push_str(" (Cobalt)");
-    println!("Migrating your mod « {} »", &target_path);
     let is_romfs: bool = romfs_path.is_dir();
 
     if !is_romfs {
         println!("This isn't a romfs folder, so I can't help you here.");
     }
 
-    create_required_directories(&target_path);
+    println!("Migrating your mod « {} »", &target_path);
+
+    create_required_directories(&target_path).expect("I had trouble creating the required directories. Please report this to the author.");
 
     for entry in WalkDir::new(Path::new(&mod_path).join("romfs"))
         .into_iter()
@@ -72,7 +57,7 @@ fn main() {
         let path = entry.path();
         let relative_path = diff_paths(path, &romfs_path).unwrap();
         if path.is_dir() {
-            fs::create_dir_all(Path::new(&target_path).join(relative_path));
+            fs::create_dir_all(Path::new(&target_path).join(relative_path)).expect("I couldn't create the directory for your data files. Please report this to the author.");
             continue;
         }
 
@@ -85,7 +70,7 @@ fn main() {
             if SUPPORTED_GAMEDATAS.contains(&file_name) {
                 migrate_gamedata(&path.to_path_buf(), file_name, &target_path);
             } else {
-                fs::copy(path, Path::new(&target_path).join(&relative_path)).expect("died");
+                fs::copy(path, Path::new(&target_path).join(&relative_path)).expect("I couldn't copy your gamedata bundle file. Please report this to the author.");
             }
         }
 
@@ -94,7 +79,7 @@ fn main() {
             .join("patches")
             .join("msbt").join(relative_path.strip_prefix("Data/StreamingAssets/aa/Switch/fe_assets_message/").unwrap());
             locale_path.pop();
-            fs::create_dir_all(&locale_path);
+            fs::create_dir_all(&locale_path).expect("I couldn't create the directory for your message file. Please report this to the author.");
 
             let my_message = TextBundle::load(path);
             match my_message {
@@ -106,10 +91,10 @@ fn main() {
                             .with_extension("msbt"),
                     )
                     .unwrap();
-                    file.write_all(my_result.unwrap().as_slice()).expect("died");
+                    file.write_all(my_result.unwrap().as_slice()).expect("I couldn't write your message file. Please report this to the author.");
                 }
                 Err(e) => {
-                    println!("Error loading message: {:?}", e);
+                    println!("Error loading message: {:?}. Please report this to the author.", e);
                 }
             }
         }
@@ -117,7 +102,7 @@ fn main() {
 
     {
         let _print_gag = Gag::stdout().unwrap();
-        remove_empty_subdirs(Path::new(&target_path));
+        remove_empty_subdirs(Path::new(&target_path)).expect("I ran into some problems cleaning up your mod. Please report this to the author.");
     }
     println!("Done!");
 }
@@ -137,7 +122,7 @@ fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) {
                     .with_extension("xml"),
             )
             .unwrap();
-            file.write_all(my_result.as_slice()).expect("died");
+            file.write_all(my_result.as_slice()).expect("I couln't write your gamedata file. Please report this to the author.");
         }
         Err(e) => {
             println!("Error loading bundle: {:?}", e);
