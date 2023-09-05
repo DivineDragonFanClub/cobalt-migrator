@@ -130,7 +130,7 @@ fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) {
     }
 }
 
-/// Simple program to greet a person
+/// Simple program to migrate a mod
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
