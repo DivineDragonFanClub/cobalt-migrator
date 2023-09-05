@@ -122,7 +122,7 @@ fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) {
                     .with_extension("xml"),
             )
             .unwrap();
-            file.write_all(my_result.as_slice()).expect("I couln't write your gamedata file. Please report this to the author.");
+            file.write_all(my_result.as_slice()).expect("I couldn't write your gamedata file. Please report this to the author.");
         }
         Err(e) => {
             println!("Error loading bundle: {:?}", e);
