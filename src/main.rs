@@ -44,6 +44,7 @@ fn main() {
 
     if !is_romfs {
         println!("This isn't a romfs folder, so I can't help you here.");
+        return;
     }
 
     println!("Migrating your mod « {} »", &target_path);
@@ -77,7 +78,9 @@ fn main() {
         if file_name.ends_with(".bytes.bundle") {
             let mut locale_path = Path::new(&target_path)
             .join("patches")
-            .join("msbt").join(relative_path.strip_prefix("Data/StreamingAssets/aa/Switch/fe_assets_message/").unwrap());
+            .join("msbt")
+            .join("message")
+            .join(relative_path.strip_prefix("Data/StreamingAssets/aa/Switch/fe_assets_message/").unwrap());
             locale_path.pop();
             fs::create_dir_all(&locale_path).expect("I couldn't create the directory for your message file. Please report this to the author.");
 
