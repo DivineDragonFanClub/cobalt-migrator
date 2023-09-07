@@ -27,10 +27,10 @@ static SUPPORTED_GAMEDATAS: &[&str] = &[
     "reliance",
 ];
 
-fn create_required_directories(target_path: &str) -> std::io::Result<()> {
-    fs::create_dir_all(Path::new(&target_path).join("patches/xml"))?;
-    fs::create_dir_all(Path::new(&target_path).join("patches/msbt"))?;
-    fs::create_dir_all(Path::new(&target_path).join("Data"))?;
+fn create_required_directories(target_path: &PathBuf) -> std::io::Result<()> {
+    fs::create_dir_all(target_path.join("patches/xml"))?;
+    fs::create_dir_all(target_path.join("patches/msbt"))?;
+    fs::create_dir_all(target_path.join("Data"))?;
     Ok(())
 }
 
@@ -38,8 +38,9 @@ fn main() {
     let cli = Args::parse();
     let mod_path = cli.mod_path;
     let romfs_path: PathBuf = mod_path.join("romfs");
-    let mut target_path = mod_path.file_name().unwrap().to_str().unwrap().to_string();
-    target_path.push_str(" (Cobalt)");
+    let mut target_path = PathBuf::new();
+    target_path.push::<PathBuf>(mod_path.file_name().unwrap().into());
+    target_path.push(" (Cobalt)");
     let is_romfs: bool = romfs_path.is_dir();
 
     if !is_romfs {
@@ -47,7 +48,7 @@ fn main() {
         return;
     }
 
-    println!("Migrating your mod « {} »", &target_path);
+    println!("Migrating your mod « {} »", target_path.display());
 
     create_required_directories(&target_path).expect("I had trouble creating the required directories. Please report this to the author.");
 
@@ -69,7 +70,7 @@ fn main() {
         if file_name.ends_with(".xml.bundle") {
             let file_name = file_name.trim_end_matches(".xml.bundle");
             if SUPPORTED_GAMEDATAS.contains(&file_name) {
-                migrate_gamedata(&path.to_path_buf(), file_name, &target_path);
+                migrate_gamedata(&path.to_path_buf(), &file_name.into(), &target_path);
             } else {
                 fs::copy(path, Path::new(&target_path).join(&relative_path)).expect("I couldn't copy your gamedata bundle file. Please report this to the author.");
             }
@@ -110,7 +111,7 @@ fn main() {
     println!("Done!");
 }
 
-fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) {
+fn migrate_gamedata(path: &PathBuf, new_name: &PathBuf, target_path: &PathBuf) {
     let my_bundle = TextBundle::load(path);
 
     match my_bundle {
