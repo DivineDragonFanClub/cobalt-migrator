@@ -43,7 +43,7 @@ fn main() {
     let is_romfs: bool = romfs_path.is_dir();
 
     if !is_romfs {
-        println!("This isn't a romfs folder, so I can't help you here.");
+        println!("The folder \"{}\" doesn't contain a \"romfs\" folder. Please make sure there is a folder named \"romfs\" in the folder.", mod_path.display());
         return;
     }
 
