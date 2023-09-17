@@ -1,11 +1,11 @@
 use astra_formats::TextBundle;
+use gag::Gag;
 use pathdiff::diff_paths;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
 use walkdir::WalkDir;
-use gag::Gag;
 
 use remove_empty_subdirs::remove_empty_subdirs;
 
@@ -49,7 +49,9 @@ fn main() {
 
     println!("Migrating your mod « {} »", &target_path);
 
-    create_required_directories(&target_path).expect("I had trouble creating the required directories. Please report this to the author.");
+    create_required_directories(&target_path).expect(
+        "I had trouble creating the required directories. Please report this to the author.",
+    );
 
     for entry in WalkDir::new(Path::new(&mod_path).join("romfs"))
         .into_iter()
@@ -71,16 +73,20 @@ fn main() {
             if SUPPORTED_GAMEDATAS.contains(&file_name) {
                 migrate_gamedata(&path.to_path_buf(), file_name, &target_path);
             } else {
-                fs::copy(path, Path::new(&target_path).join(&relative_path)).expect("I couldn't copy your gamedata bundle file. Please report this to the author.");
+                fs::copy(path, Path::new(&target_path).join(&relative_path)).expect(
+                    "I couldn't copy your gamedata bundle file. Please report this to the author.",
+                );
             }
-        }
-
-        if file_name.ends_with(".bytes.bundle") {
+        } else if file_name.ends_with(".bytes.bundle") {
             let mut locale_path = Path::new(&target_path)
-            .join("patches")
-            .join("msbt")
-            .join("message")
-            .join(relative_path.strip_prefix("Data/StreamingAssets/aa/Switch/fe_assets_message/").unwrap());
+                .join("patches")
+                .join("msbt")
+                .join("message")
+                .join(
+                    relative_path
+                        .strip_prefix("Data/StreamingAssets/aa/Switch/fe_assets_message/")
+                        .unwrap(),
+                );
             locale_path.pop();
             fs::create_dir_all(&locale_path).expect("I couldn't create the directory for your message file. Please report this to the author.");
 
@@ -94,18 +100,29 @@ fn main() {
                             .with_extension("msbt"),
                     )
                     .unwrap();
-                    file.write_all(my_result.unwrap().as_slice()).expect("I couldn't write your message file. Please report this to the author.");
+                    file.write_all(my_result.unwrap().as_slice()).expect(
+                        "I couldn't write your message file. Please report this to the author.",
+                    );
                 }
                 Err(e) => {
-                    println!("Error loading message: {:?}. Please report this to the author.", e);
+                    println!(
+                        "Error loading message: {:?}. Please report this to the author.",
+                        e
+                    );
                 }
             }
+        } else {
+            fs::copy(path, Path::new(&target_path).join(&relative_path)).expect(
+                "I couldn't copy your gamedata bundle file. Please report this to the author.",
+            );
         }
     }
 
     {
         let _print_gag = Gag::stdout().unwrap();
-        remove_empty_subdirs(Path::new(&target_path)).expect("I ran into some problems cleaning up your mod. Please report this to the author.");
+        remove_empty_subdirs(Path::new(&target_path)).expect(
+            "I ran into some problems cleaning up your mod. Please report this to the author.",
+        );
     }
     println!("Done!");
 }
@@ -125,7 +142,8 @@ fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) {
                     .with_extension("xml"),
             )
             .unwrap();
-            file.write_all(my_result.as_slice()).expect("I couldn't write your gamedata file. Please report this to the author.");
+            file.write_all(my_result.as_slice())
+                .expect("I couldn't write your gamedata file. Please report this to the author.");
         }
         Err(e) => {
             println!("Error loading bundle: {:?}", e);
