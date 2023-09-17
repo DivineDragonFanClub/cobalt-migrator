@@ -121,7 +121,7 @@ fn main() {
     {
         let _print_gag = Gag::stdout().unwrap();
         remove_empty_subdirs(Path::new(&target_path)).expect(
-            "I ran into some problems cleaning up your mod. Please report this to the author.",
+            "I ran into some problems cleaning up your mod. Please report this to the author. :). But your mod is probably fine.",
         );
     }
     println!("Done!");
