@@ -1,3 +1,5 @@
+#![feature(lazy_cell)]
+
 use astra_formats::TextBundle;
 use gag::Gag;
 use pathdiff::diff_paths;
@@ -7,25 +9,47 @@ use std::path::Path;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
+use std::collections::HashMap;
+
+use std::sync::LazyLock;
+
+static SUPPORTED_GAMEDATAS: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
+    HashMap::from([
+        ("person", "Person"),
+        ("skill", "Skill"),
+        ("shop", "Shop"),
+        ("item", "Item"),
+        ("god", "God"),
+        ("job", "Job"),
+        ("animset", "AnimSet"),
+        ("params", "Params"),
+        ("chapter", "Chapter"),
+        ("assettable", "AssetTable"),
+        ("animal", "Animal"),
+        ("calculator", "Calculator"),
+        ("reliance", "Reliance"),
+    ])
+});
+
 use remove_empty_subdirs::remove_empty_subdirs;
 
 use clap::Parser;
 
-static SUPPORTED_GAMEDATAS: &[&str] = &[
-    "person",
-    "skill",
-    "shop",
-    "item",
-    "god",
-    "job",
-    "animset",
-    "params",
-    "chapter",
-    "assettable",
-    "animal",
-    "calculator",
-    "reliance",
-];
+// static SUPPORTED_GAMEDATAS: &[&str] = &[
+//     "person",
+//     "skill",
+//     "shop",
+//     "item",
+//     "god",
+//     "job",
+//     "animset",
+//     "params",
+//     "chapter",
+//     "assettable",
+//     "animal",
+//     "calculator",
+//     "reliance",
+// ];
 
 fn create_required_directories(target_path: &str) -> std::io::Result<()> {
     fs::create_dir_all(Path::new(&target_path).join("patches/xml"))?;
@@ -70,13 +94,13 @@ fn main() {
         // if it isn't, then we need to copy it over
         if file_name.ends_with(".xml.bundle") {
             let file_name = file_name.trim_end_matches(".xml.bundle");
-            if SUPPORTED_GAMEDATAS.contains(&file_name) {
-                migrate_gamedata(&path.to_path_buf(), file_name, &target_path);
+            if let Some(&new_name) = SUPPORTED_GAMEDATAS.get(file_name) {
+                migrate_gamedata(&path.to_path_buf(), new_name, &target_path);
             } else {
                 fs::copy(path, Path::new(&target_path).join(&relative_path)).expect(
                     "I couldn't copy your gamedata bundle file. Please report this to the author.",
                 );
-            }
+            };
         } else if file_name.ends_with(".bytes.bundle") {
             let mut locale_path = Path::new(&target_path)
                 .join("patches")
