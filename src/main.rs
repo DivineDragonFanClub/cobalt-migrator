@@ -35,22 +35,6 @@ use remove_empty_subdirs::remove_empty_subdirs;
 
 use clap::Parser;
 
-// static SUPPORTED_GAMEDATAS: &[&str] = &[
-//     "person",
-//     "skill",
-//     "shop",
-//     "item",
-//     "god",
-//     "job",
-//     "animset",
-//     "params",
-//     "chapter",
-//     "assettable",
-//     "animal",
-//     "calculator",
-//     "reliance",
-// ];
-
 fn create_required_directories(target_path: &str) -> std::io::Result<()> {
     fs::create_dir_all(Path::new(&target_path).join("patches/xml"))?;
     fs::create_dir_all(Path::new(&target_path).join("patches/msbt"))?;
