@@ -27,6 +27,8 @@ static SUPPORTED_GAMEDATAS: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
         ("assettable", "AssetTable"),
         ("animal", "Animal"),
         ("calculator", "Calculator"),
+        ("cook", "Cook"),
+        ("achieve", "Achieve"),
         ("reliance", "Reliance"),
     ])
 });
