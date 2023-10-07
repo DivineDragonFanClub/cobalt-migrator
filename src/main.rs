@@ -98,12 +98,18 @@ fn main() {
                 Path::new(&locale_path).join(file_name.strip_suffix(".bytes.bundle").unwrap());
             match my_bundle {
                 Ok(mut bundle) => {
-                    let script = bundle.take_script().unwrap_or("".into());
-                    let mut file = File::create(base_path.with_extension("txt")).unwrap();
-                    file.write_all(script.as_bytes()).expect(
-                        "I couldn't write your message file. Please report this to the author.",
-                    );
-                    // println!("Script: {:?}", script);
+                    let script = bundle.take_script();
+                    match script {
+                        Ok(script) => {
+                            let mut file = File::create(base_path.with_extension("txt")).unwrap();
+                            file.write_all(script.as_bytes()).expect(
+                                "I couldn't write your message file. Please report this to the author.",
+                            );
+                        }
+                        Err(e) => {
+                            println!("Error loading script: {:?} at path {:?}", e, base_path);
+                        }
+                    }
                 }
                 Err(e) => {
                     println!("Error loading bundle: {:?}", e);
