@@ -93,24 +93,20 @@ fn main() {
                 );
             locale_path.pop();
             fs::create_dir_all(&locale_path).expect("I couldn't create the directory for your message file. Please report this to the author.");
-            let my_bundle = MessageBundle::load(path);
             let base_path =
                 Path::new(&locale_path).join(file_name.strip_suffix(".bytes.bundle").unwrap());
-            match my_bundle {
-                Ok(mut bundle) => {
-                    let script = bundle.take_script();
-                    match script {
-                        Ok(script) => {
-                            let mut file = File::create(base_path.with_extension("txt")).unwrap();
-                            file.write_all(script.as_bytes()).expect(
+            match MessageBundle::load(path) {
+                Ok(mut bundle) => match bundle.take_script() {
+                    Ok(script) => {
+                        let mut file = File::create(base_path.with_extension("txt")).unwrap();
+                        file.write_all(script.as_bytes()).expect(
                                 "I couldn't write your message txt file. Please report this to the author.",
                             );
-                        }
-                        Err(e) => {
-                            println!("Error loading script: {:?} at path {:?}", e, base_path);
-                        }
                     }
-                }
+                    Err(e) => {
+                        println!("Error loading script: {:?} at path {:?}", e, base_path);
+                    }
+                },
                 Err(e) => {
                     println!("Error loading bundle: {:?}", e);
                 }
