@@ -197,6 +197,7 @@ fn migrate_msbt(mod_path: PathBuf) -> Result<()> {
                 .with_context(|| format!("I couldn't write your raw txt file for {}", file_name))?;
         }
     }
+    println!("Done, check your mod folder for the new txt files.");
     Ok(())
 }
 
