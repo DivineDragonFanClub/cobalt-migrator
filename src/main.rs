@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use astra_formats::{MessageBundle, TextBundle};
 use gag::Gag;
 use pathdiff::diff_paths;
-use std::any;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
