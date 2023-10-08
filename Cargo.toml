@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.75"
 astra_formats = { git = "https://github.com/thane98/astra-formats", default-features = true, features = ["msbt_script"] }
 clap = { version = "4.3.22", features = ["derive"] }
 gag = "1.0.0"

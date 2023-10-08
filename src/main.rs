@@ -1,6 +1,8 @@
+use anyhow::{Context, Result};
 use astra_formats::{MessageBundle, TextBundle};
 use gag::Gag;
 use pathdiff::diff_paths;
+use std::any;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
@@ -31,14 +33,14 @@ use remove_empty_subdirs::remove_empty_subdirs;
 
 use clap::Parser;
 
-fn create_required_directories(target_path: &str) -> std::io::Result<()> {
+fn create_required_directories(target_path: &str) -> Result<()> {
     fs::create_dir_all(Path::new(&target_path).join("patches/xml"))?;
     fs::create_dir_all(Path::new(&target_path).join("patches/msbt"))?;
     fs::create_dir_all(Path::new(&target_path).join("Data"))?;
     Ok(())
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Args::parse();
     let mod_path = cli.mod_path;
     let romfs_path: PathBuf = mod_path.join("romfs");
@@ -47,15 +49,13 @@ fn main() {
     let is_romfs: bool = romfs_path.is_dir();
 
     if !is_romfs {
-        println!("The folder \"{}\" doesn't contain a \"romfs\" folder. Please make sure there is a folder named \"romfs\" in the folder.", mod_path.display());
-        return;
+        return Err(anyhow::anyhow!("The folder \"{}\" doesn't contain a \"romfs\" folder. Please make sure there is a folder named \"romfs\" in the folder.", mod_path.display()));
     }
 
     println!("Migrating your mod « {} »", &target_path);
 
-    create_required_directories(&target_path).expect(
-        "I had trouble creating the required directories. Please report this to the author.",
-    );
+    create_required_directories(&target_path)
+        .with_context(|| "I had trouble creating the required directories for your mod.")?;
 
     for entry in WalkDir::new(Path::new(&mod_path).join("romfs"))
         .into_iter()
@@ -64,7 +64,8 @@ fn main() {
         let path = entry.path();
         let relative_path = diff_paths(path, &romfs_path).unwrap();
         if path.is_dir() {
-            fs::create_dir_all(Path::new(&target_path).join(relative_path)).expect("I couldn't create the directory for your data files. Please report this to the author.");
+            fs::create_dir_all(Path::new(&target_path).join(relative_path))
+                .with_context(|| "I couldn't create the directory for your data files.")?;
             continue;
         }
 
@@ -75,11 +76,10 @@ fn main() {
         if file_name.ends_with(".xml.bundle") {
             let file_name = file_name.trim_end_matches(".xml.bundle");
             if let Some(&new_name) = SUPPORTED_GAMEDATAS.get(file_name) {
-                migrate_gamedata(&path.to_path_buf(), new_name, &target_path);
+                migrate_gamedata(&path.to_path_buf(), new_name, &target_path)?;
             } else {
-                fs::copy(path, Path::new(&target_path).join(&relative_path)).expect(
-                    "I couldn't copy your gamedata bundle file. Please report this to the author.",
-                );
+                fs::copy(path, Path::new(&target_path).join(&relative_path))
+                    .with_context(|| "I couldn't copy your gamedata bundle file.")?;
             };
         } else if file_name.ends_with(".bytes.bundle") {
             let mut locale_path = Path::new(&target_path)
@@ -92,48 +92,53 @@ fn main() {
                         .unwrap(),
                 );
             locale_path.pop();
-            fs::create_dir_all(&locale_path).expect("I couldn't create the directory for your message file. Please report this to the author.");
+            fs::create_dir_all(&locale_path)
+                .with_context(|| "I couldn't create the directory for your message file.")?;
             let base_path =
                 Path::new(&locale_path).join(file_name.strip_suffix(".bytes.bundle").unwrap());
             match MessageBundle::load(path) {
                 Ok(mut bundle) => match bundle.take_script() {
                     Ok(script) => {
                         let mut file = File::create(base_path.with_extension("txt")).unwrap();
-                        file.write_all(script.as_bytes()).expect(
-                                "I couldn't write your message txt file. Please report this to the author.",
-                            );
+                        file.write_all(script.as_bytes())
+                            .with_context(|| "I couldn't write your message txt file.")?;
                     }
                     Err(e) => {
-                        println!("Error loading script: {:?} at path {:?}", e, base_path);
+                        return Err(anyhow::anyhow!(
+                            "Error loading script: {:?} at path {:?}",
+                            e,
+                            base_path
+                        ));
                     }
                 },
                 Err(e) => {
-                    println!("Error loading bundle: {:?}", e);
+                    return Err(anyhow::anyhow!(
+                        "Error loading bundle: {:?} at path {:?}",
+                        e,
+                        base_path
+                    ));
                 }
             }
         } else {
-            fs::copy(path, Path::new(&target_path).join(&relative_path)).expect(
-                "I couldn't copy your gamedata bundle file. Please report this to the author.",
-            );
+            fs::copy(path, Path::new(&target_path).join(&relative_path))
+                .with_context(|| "I couldn't copy your gamedata bundle file.")?;
         }
     }
 
     {
         let _print_gag = Gag::stdout().unwrap();
-        remove_empty_subdirs(Path::new(&target_path)).expect(
-            "I ran into some problems cleaning up your mod. Please report this to the author. :). But your mod is probably fine.",
-        );
+        remove_empty_subdirs(Path::new(&target_path)).with_context(|| {
+            "I ran into some problems cleaning up your mod. Please report this to the author. :). But your mod is probably fine."},
+        )?;
     }
     println!("Done!");
+    Ok(())
 }
 
-fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) {
-    let my_bundle = TextBundle::load(path);
-
-    match my_bundle {
+fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) -> Result<()> {
+    match TextBundle::load(path) {
         Ok(mut bundle) => {
             let my_result = bundle.take_raw().unwrap();
-            // println!("Bundle: {:?}", my_result);
             let mut file = File::create(
                 Path::new(target_path)
                     .join("patches")
@@ -142,13 +147,15 @@ fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) {
                     .with_extension("xml"),
             )
             .unwrap();
-            file.write_all(my_result.as_slice())
-                .expect("I couldn't write your gamedata file. Please report this to the author.");
+            file.write_all(my_result.as_slice()).with_context(|| {
+                format!("I couldn't write your gamedata file for {}", target_path)
+            })?;
         }
         Err(e) => {
-            println!("Error loading bundle: {:?}", e);
+            return Err(anyhow::anyhow!("Error loading bundle {:?}: {:?}", path, e));
         }
     }
+    Ok(())
 }
 
 /// Simple program to migrate a mod
