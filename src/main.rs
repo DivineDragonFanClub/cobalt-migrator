@@ -69,6 +69,7 @@ fn main() -> Result<()> {
         }
 
         let file_name = entry.file_name().to_str().unwrap();
+
         // check if file is in SUPPORTED_GAMEDATAS
         // if it is, then we need to load it and do stuff
         // if it isn't, then we need to copy it over
@@ -81,43 +82,7 @@ fn main() -> Result<()> {
                     .with_context(|| "I couldn't copy your gamedata bundle file.")?;
             };
         } else if file_name.ends_with(".bytes.bundle") {
-            let mut locale_path = Path::new(&target_path)
-                .join("patches")
-                .join("msbt")
-                .join("message")
-                .join(
-                    relative_path
-                        .strip_prefix("Data/StreamingAssets/aa/Switch/fe_assets_message/")
-                        .unwrap(),
-                );
-            locale_path.pop();
-            fs::create_dir_all(&locale_path)
-                .with_context(|| "I couldn't create the directory for your message file.")?;
-            let base_path =
-                Path::new(&locale_path).join(file_name.strip_suffix(".bytes.bundle").unwrap());
-            match MessageBundle::load(path) {
-                Ok(mut bundle) => match bundle.take_script() {
-                    Ok(script) => {
-                        let mut file = File::create(base_path.with_extension("txt")).unwrap();
-                        file.write_all(script.as_bytes())
-                            .with_context(|| "I couldn't write your message txt file.")?;
-                    }
-                    Err(e) => {
-                        return Err(anyhow::anyhow!(
-                            "Error loading script: {:?} at path {:?}",
-                            e,
-                            base_path
-                        ));
-                    }
-                },
-                Err(e) => {
-                    return Err(anyhow::anyhow!(
-                        "Error loading bundle: {:?} at path {:?}",
-                        e,
-                        base_path
-                    ));
-                }
-            }
+            migrate_msbt(&target_path, &relative_path, file_name, path)?;
         } else {
             fs::copy(path, Path::new(&target_path).join(&relative_path))
                 .with_context(|| "I couldn't copy your gamedata bundle file.")?;
@@ -132,6 +97,51 @@ fn main() -> Result<()> {
     }
     println!("Done!");
     Ok(())
+}
+
+fn migrate_msbt(
+    target_path: &str,
+    relative_path: &Path,
+    file_name: &str,
+    path: &Path,
+) -> Result<()> {
+    let mut locale_path = Path::new(&target_path)
+        .join("patches")
+        .join("msbt")
+        .join("message")
+        .join(
+            relative_path
+                .strip_prefix("Data/StreamingAssets/aa/Switch/fe_assets_message/")
+                .unwrap(),
+        );
+    locale_path.pop();
+    fs::create_dir_all(&locale_path)
+        .with_context(|| "I couldn't create the directory for your message file.")?;
+    let base_path = Path::new(&locale_path).join(file_name.strip_suffix(".bytes.bundle").unwrap());
+    match MessageBundle::load(path) {
+        Ok(mut bundle) => match bundle.take_script() {
+            Ok(script) => match File::create(base_path.with_extension("txt")) {
+                Ok(mut file) => file
+                    .write_all(script.as_bytes())
+                    .with_context(|| "I couldn't write your message file."),
+                Err(e) => Err(anyhow::anyhow!(
+                    "Error loading script: {:?} at path {:?}",
+                    e,
+                    base_path
+                )),
+            },
+            Err(e) => Err(anyhow::anyhow!(
+                "Error loading script: {:?} at path {:?}",
+                e,
+                base_path
+            )),
+        },
+        Err(e) => Err(anyhow::anyhow!(
+            "Error loading bundle: {:?} at path {:?}",
+            e,
+            base_path
+        )),
+    }
 }
 
 fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) -> Result<()> {
