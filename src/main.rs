@@ -1,6 +1,4 @@
-#![feature(lazy_cell)]
-
-use astra_formats::TextBundle;
+use astra_formats::{MessageBundle, TextBundle};
 use gag::Gag;
 use pathdiff::diff_paths;
 use std::fs::{self, File};
@@ -9,29 +7,25 @@ use std::path::Path;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-use std::collections::HashMap;
+use phf::phf_map;
 
-use std::sync::LazyLock;
-
-static SUPPORTED_GAMEDATAS: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
-    HashMap::from([
-        ("person", "Person"),
-        ("skill", "Skill"),
-        ("shop", "Shop"),
-        ("item", "Item"),
-        ("god", "God"),
-        ("job", "Job"),
-        ("animset", "AnimSet"),
-        ("params", "Params"),
-        ("chapter", "Chapter"),
-        ("assettable", "AssetTable"),
-        ("animal", "Animal"),
-        ("calculator", "Calculator"),
-        ("cook", "Cook"),
-        ("achieve", "Achieve"),
-        ("reliance", "Reliance"),
-    ])
-});
+static SUPPORTED_GAMEDATAS: phf::Map<&'static str, &'static str> = phf_map! {
+    "person" => "Person",
+    "skill" => "Skill",
+    "shop" => "Shop",
+    "item" => "Item",
+    "god" => "God",
+    "job" => "Job",
+    "animset" => "AnimSet",
+    "params" => "Params",
+    "chapter" => "Chapter",
+    "assettable" => "AssetTable",
+    "animal" => "Animal",
+    "calculator" => "Calculator",
+    "cook" => "Cook",
+    "achieve" => "Achieve",
+    "reliance" => "Reliance",
+};
 
 use remove_empty_subdirs::remove_empty_subdirs;
 
@@ -99,26 +93,22 @@ fn main() {
                 );
             locale_path.pop();
             fs::create_dir_all(&locale_path).expect("I couldn't create the directory for your message file. Please report this to the author.");
-
-            let my_message = TextBundle::load(path);
-            match my_message {
-                Ok(mut message) => {
-                    let my_result = message.take_raw();
-                    let mut file = File::create(
-                        Path::new(&locale_path)
-                            .join(file_name.strip_suffix(".bytes.bundle").unwrap())
-                            .with_extension("msbt"),
-                    )
-                    .unwrap();
-                    file.write_all(my_result.unwrap().as_slice()).expect(
-                        "I couldn't write your message file. Please report this to the author.",
-                    );
-                }
+            let base_path =
+                Path::new(&locale_path).join(file_name.strip_suffix(".bytes.bundle").unwrap());
+            match MessageBundle::load(path) {
+                Ok(mut bundle) => match bundle.take_script() {
+                    Ok(script) => {
+                        let mut file = File::create(base_path.with_extension("txt")).unwrap();
+                        file.write_all(script.as_bytes()).expect(
+                                "I couldn't write your message txt file. Please report this to the author.",
+                            );
+                    }
+                    Err(e) => {
+                        println!("Error loading script: {:?} at path {:?}", e, base_path);
+                    }
+                },
                 Err(e) => {
-                    println!(
-                        "Error loading message: {:?}. Please report this to the author.",
-                        e
-                    );
+                    println!("Error loading bundle: {:?}", e);
                 }
             }
         } else {
