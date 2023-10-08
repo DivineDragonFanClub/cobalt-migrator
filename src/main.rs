@@ -118,30 +118,19 @@ fn migrate_msbt(
     fs::create_dir_all(&locale_path)
         .with_context(|| "I couldn't create the directory for your message file.")?;
     let base_path = Path::new(&locale_path).join(file_name.strip_suffix(".bytes.bundle").unwrap());
-    match MessageBundle::load(path) {
-        Ok(mut bundle) => match bundle.take_script() {
-            Ok(script) => match File::create(base_path.with_extension("txt")) {
-                Ok(mut file) => file
-                    .write_all(script.as_bytes())
-                    .with_context(|| "I couldn't write your message file."),
-                Err(e) => Err(anyhow::anyhow!(
-                    "Error loading script: {:?} at path {:?}",
-                    e,
-                    base_path
-                )),
-            },
-            Err(e) => Err(anyhow::anyhow!(
-                "Error loading script: {:?} at path {:?}",
-                e,
-                base_path
-            )),
-        },
-        Err(e) => Err(anyhow::anyhow!(
-            "Error loading bundle: {:?} at path {:?}",
-            e,
+    let mut bundle = MessageBundle::load(path).with_context(|| "Couldn't load message bundle")?;
+    let script = bundle
+        .take_script()
+        .with_context(|| "Couldn't take script")?;
+    let mut file = File::create(base_path.with_extension("txt")).with_context(|| {
+        format!(
+            "I couldn't create the file for your message file at {:?}",
             base_path
-        )),
-    }
+        )
+    })?;
+    file.write_all(script.as_bytes())
+        .with_context(|| "I couldn't write your message file.")?;
+    Ok(())
 }
 
 fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) -> Result<()> {
