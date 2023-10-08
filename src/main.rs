@@ -103,7 +103,7 @@ fn main() {
                         Ok(script) => {
                             let mut file = File::create(base_path.with_extension("txt")).unwrap();
                             file.write_all(script.as_bytes()).expect(
-                                "I couldn't write your message file. Please report this to the author.",
+                                "I couldn't write your message txt file. Please report this to the author.",
                             );
                         }
                         Err(e) => {
@@ -113,22 +113,6 @@ fn main() {
                 }
                 Err(e) => {
                     println!("Error loading bundle: {:?}", e);
-                }
-            }
-            let my_message = TextBundle::load(path);
-            match my_message {
-                Ok(mut message) => {
-                    let raw_result = message.take_raw();
-                    let mut file = File::create(base_path.with_extension("msbt")).unwrap();
-                    file.write_all(raw_result.unwrap().as_slice()).expect(
-                        "I couldn't write your message file. Please report this to the author.",
-                    );
-                }
-                Err(e) => {
-                    println!(
-                        "Error loading message: {:?}. Please report this to the author.",
-                        e
-                    );
                 }
             }
         } else {
