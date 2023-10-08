@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
 use astra_formats::{MessageBundle, TextBundle};
 use gag::Gag;
 use pathdiff::diff_paths;
@@ -30,7 +30,7 @@ static SUPPORTED_GAMEDATAS: phf::Map<&'static str, &'static str> = phf_map! {
 
 use remove_empty_subdirs::remove_empty_subdirs;
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 fn create_required_directories(target_path: &str) -> Result<()> {
     fs::create_dir_all(Path::new(&target_path).join("patches/xml"))?;
@@ -40,8 +40,30 @@ fn create_required_directories(target_path: &str) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let cli = Args::parse();
+    let cli = Cli::parse();
     let mod_path = cli.mod_path;
+    match cli.command {
+        Some(command) => match command {
+            Commands::Convert => {
+                convert_pre_cobalt_mod(mod_path)?;
+            }
+            Commands::Migrate(args) => match args.operation {
+                Operation::msbt => {
+                    println!("Migrating your MSBTs to plain text");
+                    migrate_msbt(mod_path)?;
+                }
+            },
+        },
+        None => {
+            // legacy action
+            convert_pre_cobalt_mod(mod_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn convert_pre_cobalt_mod(mod_path: PathBuf) -> Result<()> {
     let romfs_path: PathBuf = mod_path.join("romfs");
     let mut target_path = mod_path.file_name().unwrap().to_str().unwrap().to_string();
     target_path.push_str(" (Cobalt)");
@@ -76,13 +98,13 @@ fn main() -> Result<()> {
         if file_name.ends_with(".xml.bundle") {
             let file_name = file_name.trim_end_matches(".xml.bundle");
             if let Some(&new_name) = SUPPORTED_GAMEDATAS.get(file_name) {
-                migrate_gamedata(&path.to_path_buf(), new_name, &target_path)?;
+                convert_gamedata(&path.to_path_buf(), new_name, &target_path)?;
             } else {
                 fs::copy(path, Path::new(&target_path).join(&relative_path))
                     .with_context(|| "I couldn't copy your gamedata bundle file.")?;
             };
         } else if file_name.ends_with(".bytes.bundle") {
-            migrate_msbt(&target_path, &relative_path, file_name, path)?;
+            convert_msbt(&target_path, &relative_path, file_name, path)?;
         } else {
             fs::copy(path, Path::new(&target_path).join(&relative_path))
                 .with_context(|| "I couldn't copy your gamedata bundle file.")?;
@@ -99,7 +121,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn migrate_msbt(
+fn convert_msbt(
     target_path: &str,
     relative_path: &Path,
     file_name: &str,
@@ -133,32 +155,75 @@ fn migrate_msbt(
     Ok(())
 }
 
-fn migrate_gamedata(path: &PathBuf, new_name: &str, target_path: &str) -> Result<()> {
-    match TextBundle::load(path) {
-        Ok(mut bundle) => {
-            let my_result = bundle.take_raw().unwrap();
-            let mut file = File::create(
-                Path::new(target_path)
-                    .join("patches")
-                    .join("xml")
-                    .join(new_name)
-                    .with_extension("xml"),
-            )
-            .unwrap();
-            file.write_all(my_result.as_slice()).with_context(|| {
-                format!("I couldn't write your gamedata file for {}", target_path)
-            })?;
+fn convert_gamedata(path: &PathBuf, new_name: &str, target_path: &str) -> Result<()> {
+    let mut bundle = TextBundle::load(path).with_context(|| "Couldn't load text bundle")?;
+    let raw = bundle
+        .take_raw()
+        .with_context(|| "Couldn't take raw bundle")?;
+    let mut file = File::create(
+        Path::new(&target_path)
+            .join("patches")
+            .join("xml")
+            .join(new_name)
+            .with_extension("xml"),
+    )
+    .with_context(|| format!("I couldn't create your gamedata file for {}", target_path))?;
+    file.write_all(raw.as_slice())
+        .with_context(|| format!("I couldn't write your gamedata file for {}", target_path))?;
+    Ok(())
+}
+
+fn migrate_msbt(mod_path: PathBuf) -> Result<()> {
+    for entry in WalkDir::new(&mod_path).into_iter().filter_map(|e| e.ok()) {
+        if entry.path().is_dir() {
+            continue;
         }
-        Err(e) => {
-            return Err(anyhow::anyhow!("Error loading bundle {:?}: {:?}", path, e));
+        let file_name = entry.file_name().to_str().unwrap();
+        if file_name.ends_with("msbt") {
+            let content = fs::read(entry.path()).with_context(|| {
+                format!(
+                    "I couldn't read your MSBT at location '{}'",
+                    entry.path().display()
+                )
+            })?;
+            let patch = astra_formats::MessageMap::from_slice(&content).with_context(|| {
+                "I couldn't parse your MSBT. Please report this to the author. :)"
+            })?;
+            let wat = astra_formats::parse_msbt_script(&patch.messages)?;
+            let mut file = File::create(entry.path().with_extension("txt")).with_context(|| {
+                format!("I couldn't create your gamedata file for {}", file_name)
+            })?;
+            file.write_all(wat.as_bytes())
+                .with_context(|| format!("I couldn't write your raw txt file for {}", file_name))?;
         }
     }
     Ok(())
 }
 
-/// Simple program to migrate a mod
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(author, version, about, long_about = None)]
-struct Args {
+#[command(propagate_version = true)]
+struct Cli {
     mod_path: PathBuf,
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Convert to Cobalt format
+    Convert,
+    /// Migrations for Cobalt deprecations
+    Migrate(MigrateArgs),
+}
+
+#[derive(Args)]
+struct MigrateArgs {
+    operation: Operation,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Operation {
+    /// Migrate MSBTs to plain text
+    msbt,
 }
