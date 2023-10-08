@@ -9,7 +9,6 @@ edition = "2021"
 anyhow = "1.0.75"
 astra_formats = { git = "https://github.com/thane98/astra-formats", default-features = true, features = ["msbt_script"] }
 clap = { version = "4.3.22", features = ["derive"] }
-dialoguer = "0.11.0"
 gag = "1.0.0"
 pathdiff = "0.2.1"
 phf = { version = "0.11", features = ["macros"] }
