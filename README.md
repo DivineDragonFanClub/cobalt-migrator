@@ -1,6 +1,6 @@
 # cobalt-migrator
 
-This tool can convert non-Cobalt 2.0.0 romfs mods to be Cobalt v0.34.1 compatible.
+This tool can convert non-Cobalt 2.0.0 romfs mods to be Cobalt v1.0.0 compatible.
 
 Get the latest version [here](https://github.com/DivineDragonFanClub/cobalt-migrator/releases).
 
