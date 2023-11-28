@@ -12,10 +12,17 @@ Download the latest release and extract it anywhere. Then, have the mod folder y
 > For example, if your mod is `My Awesome Mod`, it should have the `romfs` in it like `My Awesome Mod\romfs`.
 
 ## How to use for Windows
-Drag the `My Awesome Mod folder` onto the .exe.
+First, unzip cobalt migrator.
+
+Then, drag the `My Awesome Mod folder` onto the .exe.
 
 ## How to use for Mac
-Using terminal, run ./cobalt-migrator `<path to mod folder with romfs in it>`
+First, unzip cobalt migrator.
+
+Then, using terminal, navigate to the folder where `cobalt-migrator` is, then run 
+```
+./cobalt-migrator `<path to mod folder with romfs in it>`
+```
 
 ## After the conversion
 If the conversion is successful, there will be a new version of your mod with (Cobalt) after the name, such as `My Awesome Mod (Cobalt)`. You can then install it by following the instructions [here](https://github.com/Raytwo/Cobalt/wiki/Managing-your-Mods)
