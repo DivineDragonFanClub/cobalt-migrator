@@ -17,4 +17,5 @@ Drag the `My Awesome Mod folder` onto the .exe.
 ## How to use for Mac
 Using terminal, run ./cobalt-migrator `<path to mod folder with romfs in it>`
 
+## After the conversion
 If the conversion is successful, there will be a new version of your mod with (Cobalt) after the name, such as `My Awesome Mod (Cobalt)`. You can then install it by following the instructions [here](https://github.com/Raytwo/Cobalt/wiki/Managing-your-Mods)
